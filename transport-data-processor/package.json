@@ -1,0 +1,33 @@
+{
+  "name": "sg-travel-buddy-actions",
+  "version": "1.0.0",
+  "description": "Google Assitant Actions for SGTravelBuddy",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kelumkps/sg-travel-buddy-virtual-assistant.git"
+  },
+  "keywords": [
+    "Google Assistant",
+    "SGTravelBuddy",
+    "Singapore Carparks",
+    "Trafic Images",
+    "Travel"
+  ],
+  "author": "Kelum Senanayake",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kelumkps/sg-travel-buddy-virtual-assistant/issues"
+  },
+  "homepage": "https://github.com/kelumkps/sg-travel-buddy-virtual-assistant#readme",
+  "dependencies": {
+    "express": "^4.16.4",
+    "fast-csv": "^2.4.1",
+    "geolocation-utils": "^1.1.1",
+    "nconf": "^0.10.0",
+    "request": "^2.88.0"
+  }
+}

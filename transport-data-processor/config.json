@@ -1,0 +1,25 @@
+{
+    "cloudFunctions": {
+        "baseUrl": "https://localhost:8080",
+        "uploadCarparkInfoEndpoint": "/loadCarparkInfo",
+        "uploadCarparkAvailabilityEndpoint": "/fetchCarparkAvailability"
+    },
+    "sgDataGov": {
+        "baseUrl": "https://localhost:8080/v1/transport",
+        "carparkAvailablityEndpoint": "/carpark-availability",
+        "traficImageEndpoint": "/traffic-images"
+    },
+    "onemapSg": {
+        "baseUrl": "https://localhost:8080",
+        "conversionEndpoint": "/convert/3414to4326"
+    },
+    "openStreetMap": {
+        "baseUrl": "https://localhost:8080",
+        "reverseGeoCodingEndpoint": "/reverse"
+    },
+    "intervals": {
+        "inSeconds": 30,
+        "inMinutes": 5
+    },
+    "isFirstTimeLoad": false
+}

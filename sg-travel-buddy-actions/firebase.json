@@ -1,0 +1,30 @@
+{
+  "functions": {
+    "predeploy": [
+      "npm --prefix ./functions/ run lint"
+    ],
+    "source": "functions"
+  },
+  "database": {
+    "rules": "database.rules.json"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "redirects": [
+      {
+        "source": "/",
+        "destination": "/privacy_policy.html",
+        "type": 301
+      }
+    ]
+  }
+}
