@@ -70,3 +70,8 @@ typings/
 
 # next.js build output
 .next
+
+# project specifc temp files
+*/data/out.csv
+*/config-unmasked.json
+*/indexOld.js
