@@ -4,6 +4,9 @@
     ".write": "auth != null",
     "carpark_locations": {
       ".indexOn": ["g"]
+    },
+    "trafic_image_locations": {
+      ".indexOn": ["g"]
     }
   }
 }

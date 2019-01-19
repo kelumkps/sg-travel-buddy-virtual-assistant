@@ -1,7 +1,7 @@
 {
-  "name": "sg-travel-buddy-actions",
+  "name": "transport-data-processor",
   "version": "1.0.0",
-  "description": "Google Assitant Actions for SGTravelBuddy",
+  "description": "Transport data processor for SG Travel Buddy Google Assitant Actions",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

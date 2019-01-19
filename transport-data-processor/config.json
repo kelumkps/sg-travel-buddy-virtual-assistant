@@ -2,7 +2,8 @@
     "cloudFunctions": {
         "baseUrl": "https://localhost:8080",
         "uploadCarparkInfoEndpoint": "/loadCarparkInfo",
-        "uploadCarparkAvailabilityEndpoint": "/fetchCarparkAvailability"
+        "uploadCarparkAvailabilityEndpoint": "/fetchCarparkAvailability",
+        "uploadTrafficImagesEndpoint": "/fetchAvailableTrafficImages"
     },
     "sgDataGov": {
         "baseUrl": "https://localhost:8080/v1/transport",
@@ -18,8 +19,14 @@
         "reverseGeoCodingEndpoint": "/reverse"
     },
     "intervals": {
-        "inSeconds": 30,
-        "inMinutes": 5
+        "carparks": {
+            "inSeconds": 30,
+            "inMinutes": 5
+        },
+        "trafficImages": {
+            "inSeconds": 30,
+            "inMinutes": 1
+        }
     },
-    "isFirstTimeLoad": false
+    "isFirstTimeLoad": true
 }
