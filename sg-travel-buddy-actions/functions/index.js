@@ -112,7 +112,7 @@ app.intent('show_single_traffic_image', (conv, params, option) => {
                 let trafficImage = snapshot.val();
                 let origin = [conv.data.latitude, conv.data.longitude];
                 let destination = [trafficImage.latitude, trafficImage.longitude];
-                trafficImage.distance = GeoFire.distance(origin, destination);
+                trafficImage.distance = GeoFire.distance(origin, destination) * 1000;
                 conv.ask(`<speak><p><s>Here is the traffic image you requested.</s></p></speak>`);
                 conv.ask(toTrafficImageAsBasicCard(trafficImage));
                 conv.ask(new Suggestions(['Find car parks', 'Show traffic images', 'Find car parks in 500m', 'Find car parks in 5km', 'Traffic images in 5km']));
