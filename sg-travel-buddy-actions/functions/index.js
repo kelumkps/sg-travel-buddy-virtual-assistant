@@ -6,6 +6,9 @@ const {
     dialogflow,
     BasicCard,
     Permission,
+    Image,
+    Carousel,
+    Button,
     BrowseCarousel,
     BrowseCarouselItem,
     Suggestions
@@ -26,8 +29,22 @@ const app = dialogflow({ debug: true });
 app.intent('find_nearby_car_parks', (conv, { radius }) => {
     conv.data.radius = radius;
     // Asks the user's permission to know their name, for personalization.
+    conv.contexts.delete('search_type_context');
+    conv.contexts.set('search_type_context', 15, { searchType: 'car_parks' })
     conv.ask(new Permission({
         context: 'To search car parks near to you',
+        permissions: 'DEVICE_PRECISE_LOCATION',
+    }));
+});
+
+// Handle the Dialogflow intent named 'find_nearby_traffic_images'.
+app.intent('find_nearby_traffic_images', (conv, { radius }) => {
+    conv.data.radius = radius;
+    // Asks the user's permission to know their name, for personalization.
+    conv.contexts.delete('search_type_context');
+    conv.contexts.set('search_type_context', 15, { searchType: 'traffic_images' })
+    conv.ask(new Permission({
+        context: 'To search traffic images near to you',
         permissions: 'DEVICE_PRECISE_LOCATION',
     }));
 });
@@ -50,7 +67,13 @@ app.intent('receive_current_location', (conv, params, permissionGranted) => {
         conv.data.longitude = coordinates.longitude;
         let radiusInMeters = convert(conv.data.radius.amount).from(conv.data.radius.unit).to('m');
         let limit = 10;
-        return displayCarparkResults(conv, radiusInMeters, limit, 0);
+        let context = conv.contexts.get('search_type_context');
+        const { searchType } = context.parameters;
+        if (searchType === 'car_parks') {
+            return displayCarparkResults(conv, radiusInMeters, limit, 0);
+        } else if (searchType === 'traffic_images') {
+            return displayTrafficImageResults(conv, radiusInMeters, limit, 0);
+        }
     } else {
         // If the user denied our request, go ahead with the conversation.
         conv.close('Sorry, I could not figure out where you are without your permission.');
@@ -59,19 +82,51 @@ app.intent('receive_current_location', (conv, params, permissionGranted) => {
 
 // Handle the Dialogflow intent named 'load_more_results'.
 app.intent('load_more_results', (conv) => {
-    let context = conv.contexts.get('load_more_context');
-    const { limit, nextSkip } = context.parameters;
+    let loadMorecontext = conv.contexts.get('load_more_context');
+    const { limit, nextSkip } = loadMorecontext.parameters;
+    let searchTypecontext = conv.contexts.get('search_type_context');
+    const { searchType } = searchTypecontext.parameters;
     let radiusInMeters = convert(conv.data.radius.amount).from(conv.data.radius.unit).to('m');
     if (nextSkip) {
-        return displayCarparkResults(conv, radiusInMeters, limit, nextSkip);
+        if (searchType === 'car_parks') {
+            return displayCarparkResults(conv, radiusInMeters, limit, nextSkip);
+        } else if (searchType === 'traffic_images') {
+            return displayTrafficImageResults(conv, radiusInMeters, limit, nextSkip);
+        }
     } else {
         conv.contexts.delete('load_more_context');
-        conv.ask('Sorry, no more data to load. Please start a new search.');
+        conv.contexts.delete('search_type_context');
         let nextRadius = radiusInMeters * 2;
         let nextRadiusWithUnit = (nextRadius >= 1000) ? (Number(convert(nextRadius).from('m').to('km')).toFixed(2) + ' km') : (Number(nextRadius).toFixed() + ' m');
-        conv.ask(new Suggestions(['Find car parks', 'Find car parks in ' + nextRadiusWithUnit]));
+        conv.ask('Sorry, no more data to load. Please start a new search.');
+        conv.ask(new Suggestions(['Find car parks', 'Show Traffic Images', 'Find car parks in ' + nextRadiusWithUnit, 'Show traffic images in ' + nextRadiusWithUnit]));
     }
 });
+
+// Handle the Dialogflow intent named 'show_single_traffic_image'.
+app.intent('show_single_traffic_image', (conv, params, option) => {
+    if (option) {
+        return db.ref(traffic_collection_name + '/' + option)
+            .once('value')
+            .then((snapshot) => {
+                let trafficImage = snapshot.val();
+                let origin = [conv.data.latitude, conv.data.longitude];
+                let destination = [trafficImage.latitude, trafficImage.longitude];
+                trafficImage.distance = GeoFire.distance(origin, destination);
+                conv.ask(`<speak><p><s>Here is the traffic image you requested.</s></p></speak>`);
+                conv.ask(toTrafficImageAsBasicCard(trafficImage));
+                conv.ask(new Suggestions(['Find car parks', 'Show traffic images', 'Find car parks in 500m', 'Find car parks in 5km', 'Traffic images in 5km']));
+                return Promise.resolve();
+            }).catch(err => {
+                console.error('Error while fetching traffic image with key', option, err);
+                if (err) conv.close("I'm sorry, but something went wrong. Please try again later.");
+                return Promise.resolve();
+            });
+    } else {
+        conv.ask('You did not select any item');
+    }
+});
+
 
 // Set the DialogflowApp object to handle the HTTPS POST request.
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest(app);
@@ -174,7 +229,7 @@ function displayCarparkResults(conv, radiusInMeters, limit, skip) {
                     let nextSetOfStr = skip > 0 ? 'next set of ' : '';
                     let origin = { latitude: conv.data.latitude, longitude: conv.data.longitude };
                     conv.ask(`<speak><p><s>Here are the ${nextSetOfStr}${results.data.length} nearest car parks out of ${results.total} found near by you.</s></p></speak>`);
-                    conv.ask(toBrowseCarousel(results.data, origin));
+                    conv.ask(toCarparkAsBrowseCarousel(results.data, origin));
                 } else {
                     let lastUpdateAt = moment.tz(results.data[0].update_datetime, 'Asia/Singapore').fromNow();
                     let distance = results.data[0].distance;
@@ -195,12 +250,44 @@ function displayCarparkResults(conv, radiusInMeters, limit, skip) {
                     conv.contexts.set('load_more_context', context.lifespan, { limit: limit, nextSkip: results.nextSkip })
                     conv.ask(new Suggestions(['Load more', 'Show next']));
                 } else {
+                    conv.ask(new Suggestions(['Find car parks', 'Show traffic images', 'Find car parks in 500m', 'Find car parks in 5km', 'Traffic images in 5km']));
                     conv.contexts.delete('load_more_context');
                 }
             }
             return Promise.resolve();
         }).catch(err => {
             console.error('Error while fetching near by carparks', err);
+            if (err) conv.close("I'm sorry, but something went wrong. Please try again later.");
+            return Promise.resolve();
+        });
+}
+
+function displayTrafficImageResults(conv, radiusInMeters, limit, skip) {
+    return queryFirebaseByLocation(conv.data.latitude, conv.data.longitude, radiusInMeters, limit, skip,
+        traffic_collection_name, trafficLocationCollection, 'image').then(results => {
+            if (results.data.length === 0) {
+                conv.ask(`Sorry, I couldn't find any traffic images within ${conv.data.radius.amount} ${conv.data.radius.unit}. Please try with a larger radius`);
+            } else {
+                if (conv.surface.capabilities.has('actions.capability.SCREEN_OUTPUT')) {
+                    let nextSetOfStr = skip > 0 ? 'next set of ' : '';
+                    let origin = { latitude: conv.data.latitude, longitude: conv.data.longitude };
+                    conv.ask(`<speak><p><s>Here are the ${nextSetOfStr}${results.data.length} nearest traffic images out of ${results.total} found near by you.</s></p></speak>`);
+                    conv.ask(toTrafficImagesAsCarousel(results.data, origin));
+                } else {
+                    conv.ask('Sorry, you device is not capable of displaying images');
+                }
+                if (results.nextSkip) {
+                    let context = conv.contexts.get('load_more_context');
+                    conv.contexts.set('load_more_context', context.lifespan, { limit: limit, nextSkip: results.nextSkip })
+                    conv.ask(new Suggestions(['Load more', 'Show next']));
+                } else {
+                    conv.ask(new Suggestions(['Find car parks', 'Show traffic images', 'Find car parks in 500m', 'Find car parks in 5km', 'Traffic images in 5km']));
+                    conv.contexts.delete('load_more_context');
+                }
+            }
+            return Promise.resolve();
+        }).catch(err => {
+            console.error('Error while fetching near by traffic images', err);
             if (err) conv.close("I'm sorry, but something went wrong. Please try again later.");
             return Promise.resolve();
         });
@@ -293,17 +380,34 @@ function queryFirebaseByLocation(latitude, longitude, radiusInMeters, limit, ski
     });
 }
 
-function toBrowseCarousel(carparks, origin) {
+function toCarparkAsBrowseCarousel(carparks, origin) {
     let browseCarouselItems = [];
+    if (carparks.length === 1) {
+        let carpark = carparks[0];
+        let mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${carpark.latitude},${carpark.longitude}&travelmode=driving`;
+        let distanceFromUser = (carpark.distance >= 1000) ? (Number(convert(carpark.distance).from('m').to('km')).toFixed(2) + ' km') : (Number(carpark.distance).toFixed() + ' m');
+        let description = `Distance : ${distanceFromUser}. Type: ${carpark.car_park_type} with ${carpark.type_of_parking_system} system. Available lots: ${carpark.carpark_info[0].lots_available}. Total lots: ${carpark.carpark_info[0].total_lots}.`;
+        let lastUpdateAt = moment.tz(carpark.update_datetime, 'Asia/Singapore').fromNow();
+        return new BasicCard({
+            text: `Updated ${lastUpdateAt}`,
+            subtitle: description,
+            title: carpark.address,
+            buttons: new Button({
+                title: 'Directions',
+                url: mapUrl,
+            })
+        })
+    }
+
     for (let carpark of carparks) {
-        browseCarouselItems.push(toBrowseCarouselItem(carpark, origin));
+        browseCarouselItems.push(toCarparkAsBrowseCarouselItem(carpark, origin));
     }
     return new BrowseCarousel({
         items: browseCarouselItems
     });
 }
 
-function toBrowseCarouselItem(carpark, origin) {
+function toCarparkAsBrowseCarouselItem(carpark, origin) {
     let mapUrl = `https://www.google.com/maps/dir/?api=1&origin=${origin.latitude},${origin.longitude}&destination=${carpark.latitude},${carpark.longitude}&travelmode=driving`;
     let distanceFromUser = (carpark.distance >= 1000) ? (Number(convert(carpark.distance).from('m').to('km')).toFixed(2) + ' km') : (Number(carpark.distance).toFixed() + ' m');
     let description = `Distance : ${distanceFromUser}. Type: ${carpark.car_park_type} with ${carpark.type_of_parking_system} system. Available lots: ${carpark.carpark_info[0].lots_available}. Total lots: ${carpark.carpark_info[0].total_lots}.`;
@@ -312,7 +416,56 @@ function toBrowseCarouselItem(carpark, origin) {
         title: carpark.address,
         url: encodeURI(mapUrl),
         description: description,
-        footer: `Updated ${lastUpdateAt}`,
+        footer: `Updated ${lastUpdateAt}`
+    });
+}
+
+function toTrafficImagesAsCarousel(trafficImages) {
+    let carouselItems = [];
+    if (trafficImages.length === 1) {
+        let trafficImage = trafficImages[0];
+        return toTrafficImageAsBasicCard(trafficImage);
+    }
+
+    for (let trafficImage of trafficImages) {
+        carouselItems.push(toTrafficImageAsCarouselItem(trafficImage));
+    }
+    return new Carousel({
+        items: carouselItems
+    });
+}
+
+function toTrafficImageAsCarouselItem(trafficImage) {
+    let distanceFromUser = (trafficImage.distance >= 1000) ? (Number(convert(trafficImage.distance).from('m').to('km')).toFixed(2) + ' km') : (Number(trafficImage.distance).toFixed() + ' m');
+    let lastUpdateAt = moment.tz(trafficImage.timestamp, 'Asia/Singapore').fromNow();
+    return {
+        optionInfo: {
+            key: trafficImage.camera_id,
+            synonyms: [
+                trafficImage.display_name,
+                trafficImage.camera_id
+            ]
+        },
+        title: trafficImage.display_name,
+        description: `Distance ${distanceFromUser}. Updated ${lastUpdateAt}`,
+        image: new Image({
+            url: trafficImage.image,
+            alt: trafficImage.camera_id,
+        })
+    };
+}
+
+function toTrafficImageAsBasicCard(trafficImage) {
+    let distanceFromUser = (trafficImage.distance >= 1000) ? (Number(convert(trafficImage.distance).from('m').to('km')).toFixed(2) + ' km') : (Number(trafficImage.distance).toFixed() + ' m');
+    let lastUpdateAt = moment.tz(trafficImage.timestamp, 'Asia/Singapore').fromNow();
+    return new BasicCard({
+        text: `Updated ${lastUpdateAt}`,
+        subtitle: `Distance : ${distanceFromUser}`,
+        title: trafficImage.display_name,
+        image: new Image({
+            url: trafficImage.image,
+            alt: trafficImage.camera_id,
+        })
     });
 }
 

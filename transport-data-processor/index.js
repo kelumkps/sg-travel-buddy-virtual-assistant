@@ -202,6 +202,7 @@ function fetchAndUpdateReverseGeoCodingInfo(cameras, done) {
         } else {
             let cameraInfo = trafficCameraInfo[camera_id];
             cameraInfo.address = data.address;
+            cameraInfo.display_name = data.display_name;
             if (cameras.length > 0) {
                 setTimeout(() => {
                     console.log('Going to fetch geocoding data again as no of items : ' + cameras.length);
