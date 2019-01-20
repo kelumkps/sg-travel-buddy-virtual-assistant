@@ -5,7 +5,7 @@
     "carpark_locations": {
       ".indexOn": ["g"]
     },
-    "trafic_image_locations": {
+    "traffic_image_locations": {
       ".indexOn": ["g"]
     }
   }

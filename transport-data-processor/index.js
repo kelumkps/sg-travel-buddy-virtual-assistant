@@ -22,16 +22,16 @@ if (!isFirstTimeLoad) {
     })();
 }
 
-let traficCameraInfo = {};
+let trafficCameraInfo = {};
 let isTrafficDataLoaded = false;
 
-(function loadTraficCameraInfo() {
-    fs.readFile('data/trafic_camera_info.json', 'utf8', function (err, data) {
+(function loadtrafficCameraInfo() {
+    fs.readFile('data/traffic_camera_info.json', 'utf8', function (err, data) {
         if (!err) {
-            traficCameraInfo = JSON.parse(data);
+            trafficCameraInfo = JSON.parse(data);
             isTrafficDataLoaded = true;
         }
-        console.log('Successfully loaded trafic camera infomation to memory', Object.keys(traficCameraInfo).length);
+        console.log('Successfully loaded traffic camera infomation to memory', Object.keys(trafficCameraInfo).length);
     });
 })();
 
@@ -135,7 +135,7 @@ function fetchAndSyncTrafficImages(done) {
         return;
     }
 
-    const url = config.get('sgDataGov:baseUrl') + config.get('sgDataGov:traficImageEndpoint');
+    const url = config.get('sgDataGov:baseUrl') + config.get('sgDataGov:trafficImageEndpoint');
     request.get(url, { json: true },
         (err, resp, data) => {
             if (err || !data.items || data.items.length == 0) {
@@ -144,13 +144,13 @@ function fetchAndSyncTrafficImages(done) {
             } else if (data.items[0].cameras.length > 0) {
                 let cameras = data.items[0].cameras;
                 let camerasWithoutGeoInfo = [];
-                console.log('Number of trafic image records received', cameras.length);
+                console.log('Number of traffic image records received', cameras.length);
                 for (let camera of cameras) {
-                    let cameraInfo = traficCameraInfo[camera.camera_id];
+                    let cameraInfo = trafficCameraInfo[camera.camera_id];
                     if (!cameraInfo) {
                         if (camera.location && camera.location.latitude && camera.location.longitude) {
                             camerasWithoutGeoInfo.push(camera);
-                            traficCameraInfo[camera.camera_id] = {
+                            trafficCameraInfo[camera.camera_id] = {
                                 camera_id: camera.camera_id,
                                 timestamp: camera.timestamp,
                                 image: camera.image,
@@ -173,10 +173,10 @@ function fetchAndSyncTrafficImages(done) {
                 }
                 if (camerasWithoutGeoInfo.length > 0) {
                     fetchAndUpdateReverseGeoCodingInfo(camerasWithoutGeoInfo, () => {
-                        uploadTraficImages(Object.values(traficCameraInfo), done);
+                        uploadtrafficImages(Object.values(trafficCameraInfo), done);
                     });
                 } else {
-                    uploadTraficImages(Object.values(traficCameraInfo), done);
+                    uploadtrafficImages(Object.values(trafficCameraInfo), done);
                 }
             } else {
                 console.error("No traffic image data found");
@@ -186,7 +186,7 @@ function fetchAndSyncTrafficImages(done) {
     );
 }
 
-function uploadTraficImages(cameras, done) {
+function uploadtrafficImages(cameras, done) {
     let pageSize = 100;
     const url = config.get('cloudFunctions:baseUrl') + config.get('cloudFunctions:uploadTrafficImagesEndpoint');
     uploadData(cameras, 'traffic_images', url, pageSize, 0, done);
@@ -194,13 +194,13 @@ function uploadTraficImages(cameras, done) {
 
 function fetchAndUpdateReverseGeoCodingInfo(cameras, done) {
     let receiveAllRecords = () => {
-        writeToFile('data/trafic_camera_info.json', traficCameraInfo, done);
+        writeToFile('data/traffic_camera_info.json', trafficCameraInfo, done);
     }
     let receivedOneRecord = (err, camera_id, data) => {
         if (err) {
             console.error('Error while fetching reverse geocoding data', err, data);
         } else {
-            let cameraInfo = traficCameraInfo[camera_id];
+            let cameraInfo = trafficCameraInfo[camera_id];
             cameraInfo.address = data.address;
             if (cameras.length > 0) {
                 setTimeout(() => {

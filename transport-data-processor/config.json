@@ -8,7 +8,7 @@
     "sgDataGov": {
         "baseUrl": "https://localhost:8080/v1/transport",
         "carparkAvailablityEndpoint": "/carpark-availability",
-        "traficImageEndpoint": "/traffic-images"
+        "trafficImageEndpoint": "/traffic-images"
     },
     "onemapSg": {
         "baseUrl": "https://localhost:8080",

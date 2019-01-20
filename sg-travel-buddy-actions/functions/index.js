@@ -50,7 +50,7 @@ app.intent('receive_current_location', (conv, params, permissionGranted) => {
         conv.data.longitude = coordinates.longitude;
         let radiusInMeters = convert(conv.data.radius.amount).from(conv.data.radius.unit).to('m');
         let limit = 10;
-        return displayCarparResults(conv, radiusInMeters, limit, 0);
+        return displayCarparkResults(conv, radiusInMeters, limit, 0);
     } else {
         // If the user denied our request, go ahead with the conversation.
         conv.close('Sorry, I could not figure out where you are without your permission.');
@@ -63,7 +63,7 @@ app.intent('load_more_results', (conv) => {
     const { limit, nextSkip } = context.parameters;
     let radiusInMeters = convert(conv.data.radius.amount).from(conv.data.radius.unit).to('m');
     if (nextSkip) {
-        return displayCarparResults(conv, radiusInMeters, limit, nextSkip);
+        return displayCarparkResults(conv, radiusInMeters, limit, nextSkip);
     } else {
         conv.contexts.delete('load_more_context');
         conv.ask('Sorry, no more data to load. Please start a new search.');
@@ -82,15 +82,15 @@ var db = admin.database();
 const carpark_collection_name = 'carparks';
 const carpark_location_collection_name = 'carpark_locations';
 
-const trafic_collection_name = 'trafic_images';
-const trafic_location_collection_name = 'trafic_image_locations';
+const traffic_collection_name = 'traffic_images';
+const traffic_location_collection_name = 'traffic_image_locations';
 
 // Create a GeoFire reference
 var carparkCollection = db.ref(carpark_collection_name);
 var carparkLocationCollection = new GeoFire(db.ref(carpark_location_collection_name));
 
-var traficCollection = db.ref(trafic_collection_name);
-var traficLocationCollection = new GeoFire(db.ref(trafic_location_collection_name));
+var trafficCollection = db.ref(traffic_collection_name);
+var trafficLocationCollection = new GeoFire(db.ref(traffic_location_collection_name));
 
 exports.loadCarparkInfo = functions.https.onRequest((req, res) => {
     if (!req.body.carparks || req.body.carparks.length <= 0) {
@@ -123,7 +123,7 @@ exports.fetchCarparkAvailability = functions.https.onRequest((req, res) => {
 
 exports.fetchAvailableTrafficImages = functions.https.onRequest((req, res) => {
     if (!req.body.traffic_images || req.body.traffic_images.length <= 0) {
-        res.status(400).send({ error: 'Trafic image information cannot be empty' });
+        res.status(400).send({ error: 'traffic image information cannot be empty' });
     } else {
         let count = 0;
         let done = (status, ref) => {
@@ -133,7 +133,7 @@ exports.fetchAvailableTrafficImages = functions.https.onRequest((req, res) => {
             }
         };
         for (let item of req.body.traffic_images) {
-            setInFirebase(item, 'camera_id', trafic_collection_name, traficLocationCollection, done);
+            setInFirebase(item, 'camera_id', traffic_collection_name, trafficLocationCollection, done);
         }
     }
 });
@@ -151,20 +151,20 @@ exports.fetchNearByCarParks = functions.https.onRequest((req, res) => {
     }
 });
 
-exports.fetchNearByTraficImages = functions.https.onRequest((req, res) => {
+exports.fetchNearBytrafficImages = functions.https.onRequest((req, res) => {
     let latitude = req.query.latitude;
     let longitude = req.query.longitude;
     if (!latitude || !longitude) {
         res.status(400).send({ error: 'latitude & longitude are mandatory query parameters' })
     } else {
         queryFirebaseByLocation(latitude, longitude, req.query.radius, req.query.limit, req.query.skip,
-            trafic_collection_name, traficLocationCollection, 'image')
+            traffic_collection_name, trafficLocationCollection, 'image')
             .then(data => res.status(200).send(data))
             .catch(err => res.status(503).send({ error: 'Error while fetching documents', msg: err }));
     }
 });
 
-function displayCarparResults(conv, radiusInMeters, limit, skip) {
+function displayCarparkResults(conv, radiusInMeters, limit, skip) {
     return queryFirebaseByLocation(conv.data.latitude, conv.data.longitude, radiusInMeters, limit, skip,
         carpark_collection_name, carparkLocationCollection, 'carpark_info').then(results => {
             if (results.data.length === 0) {
